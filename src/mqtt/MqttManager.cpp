@@ -12,7 +12,8 @@ void MqttManager::begin() {
 
 void MqttManager::tick(bool wifiConnected) {
   if (!wifiConnected) {
-    if (mqttClient_.connected()) mqttClient_.stop();
+    if (mqttClient_.connected())
+      mqttClient_.stop();
     attempted_ = false;
     return;
   }
@@ -23,7 +24,8 @@ void MqttManager::tick(bool wifiConnected) {
   }
 
   const unsigned long now = millis();
-  if (attempted_ && now - lastAttemptMs_ < Config::MQTT_RETRY_MS) return;
+  if (attempted_ && now - lastAttemptMs_ < Config::MQTT_RETRY_MS)
+    return;
 
   attempted_ = true;
   lastAttemptMs_ = now;
@@ -41,7 +43,8 @@ void MqttManager::tick(bool wifiConnected) {
 
   Serial.print("[MQTT] Ket noi that bai, ma loi: ");
   Serial.println(mqttClient_.connectError());
-  Serial.println("Goi y: kiem tra IPv4 broker, port 1883, cung Wi-Fi va Windows Firewall.");
+  Serial.println("Goi y: kiem tra IPv4 broker, port 1883, cung Wi-Fi va "
+                 "Windows Firewall.");
 }
 
 bool MqttManager::publishSensorSample() {
@@ -55,13 +58,14 @@ bool MqttManager::publishSensorSample() {
   snprintf(payload, sizeof(payload), "{\"value\":%d}", randomValue);
   const size_t payloadLength = strlen(payload);
   if (!mqttClient_.beginMessage(Config::SENSOR_TOPIC,
-                                static_cast<unsigned long>(payloadLength), false,
-                                Config::MQTT_QOS)) {
-    Serial.println("[LOI MQTT] beginMessage that bai; dong ket noi de thu lai.");
+                                static_cast<unsigned long>(payloadLength),
+                                false, Config::MQTT_QOS)) {
+    Serial.println(
+        "[LOI MQTT] beginMessage that bai; dong ket noi de thu lai.");
     mqttClient_.stop();
     return false;
   }
-  if (mqttClient_.write(reinterpret_cast<const uint8_t*>(payload),
+  if (mqttClient_.write(reinterpret_cast<const uint8_t *>(payload),
                         payloadLength) != payloadLength) {
     Serial.println("[LOI MQTT] Ghi payload that bai; dong ket noi de thu lai.");
     mqttClient_.stop();
@@ -94,20 +98,21 @@ bool MqttManager::publishPirState(bool motionDetected) {
   const size_t payloadLength = strlen(payload);
 
   if (!mqttClient_.beginMessage(Config::PIR_TOPIC,
-                                static_cast<unsigned long>(payloadLength), false,
-                                Config::MQTT_QOS)) {
+                                static_cast<unsigned long>(payloadLength),
+                                false, Config::MQTT_QOS)) {
     Serial.println("[LOI MQTT] PIR beginMessage that bai.");
     mqttClient_.stop();
     return false;
   }
-  if (mqttClient_.write(reinterpret_cast<const uint8_t*>(payload),
+  if (mqttClient_.write(reinterpret_cast<const uint8_t *>(payload),
                         payloadLength) != payloadLength) {
     Serial.println("[LOI MQTT] PIR ghi payload that bai.");
     mqttClient_.stop();
     return false;
   }
   if (!mqttClient_.endMessage()) {
-    Serial.println("[LOI MQTT] PIR publish that bai hoac khong nhan duoc PUBACK.");
+    Serial.println(
+        "[LOI MQTT] PIR publish that bai hoac khong nhan duoc PUBACK.");
     mqttClient_.stop();
     return false;
   }

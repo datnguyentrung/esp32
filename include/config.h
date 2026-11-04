@@ -14,7 +14,7 @@ constexpr char SENSOR_TOPIC[] = "esp32/esp32-01/sensor";
 constexpr char SENSOR_PAYLOAD[] = "{\"temperature\":29.5,\"humidity\":74}";
 constexpr char PIR_TOPIC[] = "esp32/esp32-01/sensor";
 constexpr uint8_t PIR_PIN = 27;
-constexpr uint32_t PIR_WARMUP_MS = 60000;
+constexpr uint32_t PIR_WARMUP_MS = 10000;
 
 constexpr unsigned long MQTT_RETRY_MS = 5000;
 constexpr unsigned long WIFI_STATUS_INTERVAL_MS = 5000;

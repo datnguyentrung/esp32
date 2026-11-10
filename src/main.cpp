@@ -4,13 +4,16 @@
 #include "config.h"
 #include "mqtt/MqttManager.h"
 #include "pir/PirSensor.h"
+#include "provisioning/ProvisioningStore.h"
 #include "wifi/WifiManager.h"
 
 namespace {
 WifiManager wifiManager;
 MqttManager mqttManager;
-SerialCommands serialCommands(mqttManager);
+ProvisioningStore provisioningStore;
+SerialCommands serialCommands(mqttManager, wifiManager, provisioningStore);
 PirSensor pirSensor(Config::PIR_PIN, Config::PIR_WARMUP_MS);
+DeviceProfile deviceProfile;
 
 // Luu trang thai PIR lan truoc de chi xu ly khi co thay doi
 bool lastPirState = false;
@@ -23,16 +26,21 @@ void setup() {
   Serial.println();
   Serial.println("========== ESP32 SENSOR MQTT ==========");
   Serial.println("Serial Monitor: 115200 baud, Newline.");
-  Serial.println("Lenh gui thu cong: SCAN");
+  Serial.println("Commands: PROVISION {json}, STATUS, SCAN, RESET_PROVISIONING");
 
-  wifiManager.begin();
-  mqttManager.begin();
+  if (provisioningStore.load(deviceProfile)) {
+    wifiManager.begin(deviceProfile.ssid, deviceProfile.password);
+    mqttManager.begin(deviceProfile);
+  } else {
+    Serial.println("Device is not provisioned; MQTT is disabled.");
+  }
   pirSensor.begin();
 }
 
 void loop() {
   wifiManager.tick();
   mqttManager.tick(wifiManager.isConnected());
+  mqttManager.publishHeartbeat();
   serialCommands.tick();
 
   pirSensor.update();

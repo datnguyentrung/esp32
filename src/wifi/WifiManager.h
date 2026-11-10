@@ -5,7 +5,7 @@
 
 class WifiManager {
  public:
-  void begin();
+  void begin(const String& ssid, const String& password);
   void tick();
   bool isConnected() const;
 

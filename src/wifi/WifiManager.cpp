@@ -2,12 +2,12 @@
 
 #include "config.h"
 
-void WifiManager::begin() {
+void WifiManager::begin(const String& ssid, const String& password) {
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
   Serial.print("[WiFi] Dang ket noi toi SSID: ");
-  Serial.println(Config::WIFI_SSID);
-  WiFi.begin(Config::WIFI_SSID, Config::WIFI_PASSWORD);
+  Serial.println(ssid);
+  WiFi.begin(ssid.c_str(), password.c_str());
 }
 
 void WifiManager::tick() {

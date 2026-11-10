@@ -4,13 +4,18 @@
 
 MqttManager::MqttManager() : mqttClient_(wifiClient_) {}
 
-void MqttManager::begin() {
-  mqttClient_.setId(Config::DEVICE_ID);
+void MqttManager::begin(const DeviceProfile& profile) {
+  profile_ = profile;
+  provisioned_ = !profile_.deviceCode.isEmpty() && !profile_.mqttSecret.isEmpty();
+  if (!provisioned_) return;
+  mqttClient_.setId(profile_.deviceCode.c_str());
+  mqttClient_.setUsernamePassword(profile_.deviceCode.c_str(), profile_.mqttSecret.c_str());
   mqttClient_.setKeepAliveInterval(Config::MQTT_KEEP_ALIVE_MS);
   mqttClient_.setConnectionTimeout(Config::MQTT_CONNECTION_TIMEOUT_MS);
 }
 
 void MqttManager::tick(bool wifiConnected) {
+  if (!provisioned_) return;
   if (!wifiConnected) {
     if (mqttClient_.connected())
       mqttClient_.stop();
@@ -30,14 +35,14 @@ void MqttManager::tick(bool wifiConnected) {
   attempted_ = true;
   lastAttemptMs_ = now;
   Serial.print("[MQTT] Dang ket noi broker ");
-  Serial.print(Config::MQTT_BROKER);
+  Serial.print(profile_.mqttHost);
   Serial.print(":");
-  Serial.println(Config::MQTT_PORT);
+  Serial.println(profile_.mqttPort);
 
-  if (mqttClient_.connect(Config::MQTT_BROKER, Config::MQTT_PORT)) {
+  if (mqttClient_.connect(profile_.mqttHost.c_str(), profile_.mqttPort)) {
     Serial.println("[MQTT] DA KET NOI broker.");
     Serial.print("[MQTT] San sang gui toi topic: ");
-    Serial.println(Config::SENSOR_TOPIC);
+    Serial.println(profile_.sensorTopic);
     return;
   }
 
@@ -57,7 +62,7 @@ bool MqttManager::publishSensorSample() {
   char payload[24];
   snprintf(payload, sizeof(payload), "{\"value\":%d}", randomValue);
   const size_t payloadLength = strlen(payload);
-  if (!mqttClient_.beginMessage(Config::SENSOR_TOPIC,
+  if (!mqttClient_.beginMessage(profile_.sensorTopic,
                                 static_cast<unsigned long>(payloadLength),
                                 false, Config::MQTT_QOS)) {
     Serial.println(
@@ -79,7 +84,7 @@ bool MqttManager::publishSensorSample() {
 
   Serial.println("[THANH CONG] DA GUI MQTT (QoS 1, da nhan PUBACK).");
   Serial.print("Topic: ");
-  Serial.println(Config::SENSOR_TOPIC);
+  Serial.println(profile_.sensorTopic);
   Serial.print("Payload: ");
   Serial.println(payload);
   return true;
@@ -97,7 +102,7 @@ bool MqttManager::publishPirState(bool motionDetected) {
            motionDetected ? "true" : "false");
   const size_t payloadLength = strlen(payload);
 
-  if (!mqttClient_.beginMessage(Config::PIR_TOPIC,
+  if (!mqttClient_.beginMessage(profile_.sensorTopic,
                                 static_cast<unsigned long>(payloadLength),
                                 false, Config::MQTT_QOS)) {
     Serial.println("[LOI MQTT] PIR beginMessage that bai.");
@@ -119,8 +124,20 @@ bool MqttManager::publishPirState(bool motionDetected) {
 
   Serial.println("[PIR] DA GUI MQTT.");
   Serial.print("Topic: ");
-  Serial.println(Config::PIR_TOPIC);
+  Serial.println(profile_.sensorTopic);
   Serial.print("Payload: ");
   Serial.println(payload);
   return true;
+}
+
+void MqttManager::publishHeartbeat() {
+  if (!mqttClient_.connected() || profile_.heartbeatTopic.isEmpty()) return;
+  const unsigned long now = millis();
+  if (now - lastHeartbeatMs_ < profile_.heartbeatSeconds * 1000UL) return;
+  lastHeartbeatMs_ = now;
+  char payload[192];
+  snprintf(payload, sizeof(payload), "{\"deviceCode\":\"%s\",\"firmwareVersion\":\"%s\",\"appliedConfigVersion\":%d,\"rssi\":%d,\"uptimeMs\":%lu,\"health\":\"HEALTHY\"}", profile_.deviceCode.c_str(), profile_.firmwareVersion.c_str(), profile_.desiredConfigVersion, WiFi.RSSI(), now);
+  mqttClient_.beginMessage(profile_.heartbeatTopic, strlen(payload), false, Config::MQTT_QOS);
+  mqttClient_.print(payload);
+  mqttClient_.endMessage();
 }
